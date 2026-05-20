@@ -1,0 +1,359 @@
+{
+  "name": "Application Stability Improvement Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "servicenow-incident",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -448,
+        304
+      ],
+      "id": "e6bfc1fb-7fe4-4fbf-854b-09164f0e9657",
+      "name": "INBOUND - ServiceNow Incident Webhook",
+      "webhookId": "289a6777-cf67-4eba-9515-62175622797a",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c54a9d94-7364-47ea-8798-c167214c6783",
+              "leftValue": "={{ $json.data.length > 0 }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "6778d3a6-0760-4bd6-bb8a-e1c62cb1602c",
+              "leftValue": "",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        96,
+        176
+      ],
+      "id": "1e520ee9-052c-4f37-8307-c525f76b8b11",
+      "name": "IF - Exception Records Found"
+    },
+    {
+      "parameters": {
+        "content": "ENTRY POINT\n\nReceives ServiceNow Incident payload\nExpected:\n- incident number\n- description\n- application details",
+        "height": 464,
+        "width": 208
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -496,
+        64
+      ],
+      "id": "7208fc3c-5ca6-45ed-9b2d-029ff98193a6",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "LOG ANALYSIS\n\nConverts the description from incident to KQL.\nExecute KQL query against Azure Application Insight.\nExtracts exception details",
+        "height": 464,
+        "width": 208,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -176,
+        64
+      ],
+      "id": "3c153b2b-41ba-4ca5-bad3-01538adfb604",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "AI ROOT CAUSE ANALYSIS\n\nUses AI model to:\n- summarize exception\n- identify root cause\n- generate suggestion to resolved the root cause\n- send email",
+        "height": 448,
+        "width": 736,
+        "color": "#C3F29C"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        256,
+        64
+      ],
+      "id": "2e58e23a-23ad-419b-9f59-a92502a9ae5d",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "NO EXCEPTION FOUND\n\nSends notification when\nno matching logs are available.\nRequires manual validation\nwith application support team.",
+        "height": 192,
+        "width": 480,
+        "color": "#EE8B49"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        32,
+        544
+      ],
+      "id": "0158a2fd-471e-4d74-b15e-1f1420133393",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://imposing-faceted-whisking.ngrok-free.dev/api/v1/query",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "x-api-key",
+              "value": "my-secure-api-key-123"
+            },
+            {
+              "name": "IncidentNumber",
+              "value": "={{$node[\"INBOUND - ServiceNow Incident Webhook\"].json.body.number}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n \"query\": \"{{ $json.body.description }}\",\n \"type\": \"natural\",\n \"output\": \"json\"\n } ",
+        "options": {}
+      },
+      "id": "c51d516c-d745-437f-8397-c5f353cfd470",
+      "name": "API - KQL Exception Node",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -128,
+        304
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "txtHg6Wxsp9HAln7",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://aqxan-205-254-168-151.run.pinggy-free.link/api/analyze/codeSuggestion",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n \"exception\": \"{{ $json.data[0].outerMessage ||$json.data[0].innermostMessage }}\",\n \"cloud_RoleName\": \"{{ $json.data[0].cloud_RoleName }}\"\n } ",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        368,
+        288
+      ],
+      "id": "1be75eb5-c457-4df1-a787-46499c8692b6",
+      "name": "API - Identify Root Cause Node"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-5-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-5-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are a professional software incident management assistant.\n\nYour task is to generate:\n1. Email Subject\n2. Professional HTML Email Body\n\nbased on the provided JSON exception analysis.\n\nThe email should:\n- Be concise\n- Be professional\n- Use proper HTML formatting\n- Use paragraphs, spacing, and bullet points\n- Mention repository\n- Mention exception\n- Mention root cause\n- Mention suggested fix\n- Mention GitHub URL as clickable hyperlink\n- End with actionable next steps\n\nFormatting requirements:\n- Use <p> tags for paragraphs\n- Use <ul><li> for lists\n- Use <strong> for important labels\n- Add line spacing for readability\n- Keep the email visually clean and professional\n\nReturn output in this JSON format only:\n\n{\n  \"subject\": \"string\",\n  \"body\": \"string\"\n}"
+            },
+            {
+              "content": "={{ JSON.stringify($json) }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        528,
+        288
+      ],
+      "id": "6b07fdba-a78a-4bba-89b4-b895725c921c",
+      "name": "AI - Generated Incident Email Node",
+      "credentials": {
+        "openAiApi": {
+          "id": "ftj699xGOrGbhwzG",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "amritanka.pal@gmail.com,sam18.rockstar@gmail.com,karteek.koraganji@gmail.com",
+        "subject": "=No Exception Found - {{ $node[\"INBOUND - ServiceNow Incident Webhook\"].json.body.number }}",
+        "message": "=<p>Hi Team,</p>  <p> No occurrences of the requested exception type were found in the application logs for the provided incident. </p>  <p> <strong>Incident Number:</strong> {{ $node[\"INBOUND - ServiceNow Incident Webhook\"].json.body.number }} </p>  <p> Please verify the issue with the respective application owner/team for further investigation. </p>  <p> Regards,<br> Incident Monitoring System </p>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        272,
+        576
+      ],
+      "id": "d1914c0c-bae7-4ad3-901c-9c91991e2635",
+      "name": "EMAIL - Send No Exception Notification Node",
+      "webhookId": "e7cec1e6-4db6-4d2f-b7d1-3c2fad48c35d",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "X9n8nkSfRyIBnZkL",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "amritanka.pal@gmail.com,sam18.rockstar@gmail.com,karteek.koraganji@gmail.com",
+        "subject": "={{ JSON.parse($json.output[0].content[0].text).subject }} - {{ $node[\"INBOUND - ServiceNow Incident Webhook\"].json.body.number }}",
+        "message": "={{ JSON.parse($json.output[0].content[0].text).body }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        800,
+        288
+      ],
+      "id": "71277e1a-c5d0-4057-8ccb-d5c79b4f6eaf",
+      "name": "EMAIL - Send Exception Analysis Node",
+      "webhookId": "cc903de4-e1ef-4f75-8649-aebaa17605e1",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "X9n8nkSfRyIBnZkL",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "INBOUND - ServiceNow Incident Webhook": {
+      "main": [
+        [
+          {
+            "node": "API - KQL Exception Node",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Exception Records Found": {
+      "main": [
+        [
+          {
+            "node": "API - Identify Root Cause Node",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "EMAIL - Send No Exception Notification Node",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "API - KQL Exception Node": {
+      "main": [
+        [
+          {
+            "node": "IF - Exception Records Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "API - Identify Root Cause Node": {
+      "main": [
+        [
+          {
+            "node": "AI - Generated Incident Email Node",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI - Generated Incident Email Node": {
+      "main": [
+        [
+          {
+            "node": "EMAIL - Send Exception Analysis Node",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "8a83aebc-d56f-4230-803c-0b1d0a49d659",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5f5da563dacd60050e883bae684c031a0358f623d8ebbdef9a2b481075694f42"
+  },
+  "id": "l3LRCJ2LKKrL3hAh",
+  "tags": []
+}
